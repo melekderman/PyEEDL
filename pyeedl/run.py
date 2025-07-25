@@ -3,7 +3,7 @@ from electron import *
 
 def main():
     IN_DIR  = "../eedl"
-    OUT_DIR = "../e_data"
+    OUT_DIR = "../mcdc-electron"
     os.makedirs(OUT_DIR, exist_ok=True)
 
     # process

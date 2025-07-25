@@ -1,5 +1,5 @@
 # PyEEDL
-A parser for EEDL electron data in ENDF‑6 format.
+A package for MCDC electron data preparation from EEDL dataset.
 
 These datasets are derived from the Evaluated Electron Data Library [EEDL](https://www-nds.iaea.org/epics/).
 

@@ -104,78 +104,93 @@ MF_MT = {
 }
 
 SECTIONS_ABBREVS = {
-    # MF=23  : Electron Cross Sections
-    (23, 501): "tot_xs",
-    (23, 522): "ion_xs",
-    (23, 525): "lge_xs",     # large-angle elastic
-    (23, 526): "el_xs",      # elastic total
-    (23, 527): "brem_xs",
-    (23, 528): "exc_xs",
-    (23, 534): "K_xs",
-    (23, 535): "L1_xs",
-    (23, 536): "L2_xs",
-    (23, 537): "L3_xs",
-    (23, 538): "M1_xs",
-    (23, 539): "M2_xs",
-    (23, 540): "M3_xs",
-    (23, 541): "M4_xs",
-    (23, 542): "M5_xs",
-    (23, 543): "N1_xs",
-    (23, 544): "N2_xs",
-    (23, 545): "N3_xs",
-    (23, 546): "N4_xs",
-    (23, 547): "N5_xs",
-    (23, 548): "N6_xs",
-    (23, 549): "N7_xs",
-    (23, 550): "O1_xs",
-    (23, 551): "O2_xs",
-    (23, 552): "O3_xs",
-    (23, 553): "O4_xs",
-    (23, 554): "O5_xs",
-    (23, 555): "O6_xs",
-    (23, 556): "O7_xs",
-    (23, 559): "P1_xs",
-    (23, 560): "P2_xs",
-    (23, 561): "P3_xs",
-    (23, 570): "Q1_xs",
+    # MF=23 : Electron Cross Sections
+    (23, 501): "xs_tot",
+    (23, 522): "xs_ion",
+    (23, 525): "xs_lge",       # large-angle elastic
+    (23, 526): "xs_el",        # elastic total
+    (23, 527): "xs_brem",
+    (23, 528): "xs_exc",
+    (23, 534): "xs_K",
+    (23, 535): "xs_L1",
+    (23, 536): "xs_L2",
+    (23, 537): "xs_L3",
+    (23, 538): "xs_M1",
+    (23, 539): "xs_M2",
+    (23, 540): "xs_M3",
+    (23, 541): "xs_M4",
+    (23, 542): "xs_M5",
+    (23, 543): "xs_N1",
+    (23, 544): "xs_N2",
+    (23, 545): "xs_N3",
+    (23, 546): "xs_N4",
+    (23, 547): "xs_N5",
+    (23, 548): "xs_N6",
+    (23, 549): "xs_N7",
+    (23, 550): "xs_O1",
+    (23, 551): "xs_O2",
+    (23, 552): "xs_O3",
+    (23, 553): "xs_O4",
+    (23, 554): "xs_O5",
+    (23, 555): "xs_O6",
+    (23, 556): "xs_O7",
+    (23, 559): "xs_P1",
+    (23, 560): "xs_P2",
+    (23, 561): "xs_P3",
+    (23, 570): "xs_Q1",
 
-    # MF=26  : Angular and Energy Distributions
-    (26, 525): "lge_ang",
-    (26, 527): "brem_spec_loss",
-    (26, 528): "exc_loss",
-    (26, 534): "K_spec",
-    (26, 535): "L1_spec",
-    (26, 536): "L2_spec",
-    (26, 537): "L3_spec",
-    (26, 538): "M1_spec",
-    (26, 539): "M2_spec",
-    (26, 540): "M3_spec",
-    (26, 541): "M4_spec",
-    (26, 542): "M5_spec",
-    (26, 543): "N1_spec",
-    (26, 544): "N2_spec",
-    (26, 545): "N3_spec",
-    (26, 546): "N4_spec",
-    (26, 547): "N5_spec",
-    (26, 548): "N6_spec",
-    (26, 549): "N7_spec",
-    (26, 550): "O1_spec",
-    (26, 551): "O2_spec",
-    (26, 552): "O3_spec",
-    (26, 553): "O4_spec",
-    (26, 554): "O5_spec",
-    (26, 555): "O6_spec",
-    (26, 556): "O7_spec",
-    (26, 559): "P1_spec",
-    (26, 560): "P2_spec",
-    (26, 561): "P3_spec",
-    (26, 570): "Q1_spec",
+    # MF=26 : Angular and Energy Distributions
+    (26, 525): "ang_lge",
+    (26, 527): "loss_brem_spec",
+    (26, 528): "loss_exc",
+    (26, 534): "spec_K",
+    (26, 535): "spec_L1",
+    (26, 536): "spec_L2",
+    (26, 537): "spec_L3",
+    (26, 538): "spec_M1",
+    (26, 539): "spec_M2",
+    (26, 540): "spec_M3",
+    (26, 541): "spec_M4",
+    (26, 542): "spec_M5",
+    (26, 543): "spec_N1",
+    (26, 544): "spec_N2",
+    (26, 545): "spec_N3",
+    (26, 546): "spec_N4",
+    (26, 547): "spec_N5",
+    (26, 548): "spec_N6",
+    (26, 549): "spec_N7",
+    (26, 550): "spec_O1",
+    (26, 551): "spec_O2",
+    (26, 552): "spec_O3",
+    (26, 553): "spec_O4",
+    (26, 554): "spec_O5",
+    (26, 555): "spec_O6",
+    (26, 556): "spec_O7",
+    (26, 559): "spec_P1",
+    (26, 560): "spec_P2",
+    (26, 561): "spec_P3",
+    (26, 570): "spec_Q1",
+}
+
+# Mapping of MF=23 cross-section fields to their ENDF‑6 descriptions
+# Refs:
+# 1) ENDF‑6 Formats Manual (ENDF‑102, 2023), Section 23.2 (“File 23: Electron Interaction Data”)
+# 2) ENDF‑6 Formats Manual (ENDF‑102, 2023), Section 2.2.1 (“TAB1: Tabulated Functions”)
+MF23 = {
+    "sigma.x":              "Array of incident-energy grid points (eV)",
+    "sigma.y":              "Array of cross-section values (e.g. barns)",
+    "sigma.breakpoints":    "NBT: number of points in each interpolation region",
+    "sigma.interpolation":  "INT: interpolation law code for each region",
+    "ZA":                   "ZA identifier of the target (atomic number ×1000 + mass number)",
+    "AWR":                  "Atomic weight ratio of the target",
+    # optional:
+    "LRF":                  "Resonance/interpolation flag (if present)",
 }
 
 # Mapping of MF=26 distribution fields to their ENDF‑6 descriptions
 # Refs:
-# 1) ENDF‑6 Formats Manual (ENDF‑102, 2023), Section 26.2 (“File 26: Secondary Energy Distributions”) 
-# 2) ENDF‑6 Formats Manual (ENDF‑102, 2023), Table 6.2 (“TAB2: Energy–Energy Distributions”) 
+# 1) ENDF‑6 Formats Manual (ENDF‑102, 2023), Section 26.2 (“File 26: Secondary Energy Distributions”)
+# 2) ENDF‑6 Formats Manual (ENDF‑102, 2023), Table 6.2 (“TAB2: Energy–Energy Distributions”)
 # 3) https://t2.lanl.gov/nis/endf/law1for6.html
 
 MF26 = {
@@ -185,8 +200,8 @@ MF26 = {
     "y":              "Yield y(E) vs incident energy (Tabulated1D, typically unity)",  
 
     # Nested distribution parameters
-    "distribution.LANG":   "Angular interpolation indicator (e.g. 1=Legendre, 2=Kalbach)",  
-    "distribution.LEP":    "Outgoing-energy interpolation scheme (1=histogram, 2=linear-linear)",  
+    "distribution.LANG":   "Indicator that selects the angular representation to be used: (e.g. 1=Legendre, 2=Kalbach)",  
+    "distribution.LEP":    "Interpolation scheme for secondary energy: (1=histogram, 2=linear-linear)",  
     "distribution.NR":     "Number of interpolation regions in incident-energy axis",  
     "distribution.NE":     "Number of incident-energy points",  
     "distribution.E_int":  "Tabulated2D full energy–energy distribution object",  
@@ -194,9 +209,9 @@ MF26 = {
 
     # Per-incident-energy entries (one dict per E)
     "distribution.distribution.ND":   "Number of discrete outgoing-energy points",  
-    "distribution.distribution.NA":   "Number of angular parameters (0=none, 1=Kalbach)",  
+    "distribution.distribution.NA":   "Number of angular parameters (0=Isotropic, 1=Kalbach (with LANG=2))",  
     "distribution.distribution.NW":   "Total words in the LIST record (NEP * (NA+2))",  
-    "distribution.distribution.NEP":  "Number of outgoing-energy points",  
+    "distribution.distribution.NEP":  "Number of secondary energy points in the distribution.",  
     "distribution.distribution.E'":   "Array of outgoing energies E′ (eV)",  
     "distribution.distribution.b":    "PDF or coefficient array for each outgoing-energy point",  
 }

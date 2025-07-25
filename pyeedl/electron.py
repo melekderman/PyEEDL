@@ -29,6 +29,7 @@ import numpy as np
 import endf
 
 from data import *
+from function import parse_mf26_mt525
 
 def extract_sections(mat, mf, mt):
     """
@@ -44,18 +45,26 @@ def extract_sections(mat, mf, mt):
     key = (mf, mt)
     if key not in SECTIONS_ABBREVS:
         raise KeyError(f"No abbreviation defined for MF={mf}, MT={mt}")
+    
     abbrev = SECTIONS_ABBREVS[key]
     sec = mat.section_data[key]
 
     # --- MF=23: Cross Sections ---
     if mf == 23:
         data = sec['sigma']   # Tabulated1D: .x: energies, .y: xs values
-        df = pd.DataFrame({
+        df_y = pd.DataFrame({
             'energy_eV':      data.x,
             'cross_section':  data.y
         })
-        df['section'] = abbrev
-        return df
+
+        df_y['section'] = abbrev
+
+        df_y.attrs = {
+            'breakpoints': data.breakpoints,
+            'interpolation': data.interpolation
+        }
+
+        return None, df_y
     
     # --- MF=26: Angular & Energy Distributions ---
     elif mf == 26:
@@ -93,22 +102,65 @@ def extract_sections(mat, mf, mt):
         E_inc = None
         if 'E' in dist and dist['E'] is not None:
             E_inc = dist['E']
-        
 
         # 525 and 528 without full sub‑list
         if mt == 525:
-            y_tab = prod.get('y')
-            return pd.DataFrame({
-                'energy_eV': y_tab.x,
-                'y'        : y_tab.y
-            }).assign(section=abbrev)
+            text = mat.section_text[key]
+            data_26525 = parse_mf26_mt525(text)
 
-        if mt == 528:
-            et = dist.get('ET')
-            return pd.DataFrame({
-                'energy_eV':   et.x,
-                'avg_loss_eV': et.y
-            }).assign(section=abbrev)
+            rows = []
+            for reg in data_26525:
+                E = reg['E_in']
+                for mu, prob in reg['pairs']:
+                    rows.append({
+                    'inc_energy': E,
+                    'mu':        mu,
+                    'prob':      prob,
+                    'section':   abbrev
+                })
+
+            df = pd.DataFrame(rows)
+            df['section'] = abbrev
+
+            df_y = pd.DataFrame({
+                'y_inc_energy': y_tab.x,
+                'y_yield': y_tab.y
+            })
+
+            df_y['section'] = abbrev
+
+            df_y.attrs = {
+                'breakpoints': y_tab.breakpoints,
+                'interpolation': y_tab.interpolation
+            }
+            return df, df_y
+
+        elif mt == 528:
+            df_y = pd.DataFrame({
+                'energy_eV':   ET.x,
+                'avg_loss_eV': ET.y,
+
+            })
+            df_y['section'] = abbrev
+            df_y.attrs = {
+                'y_inc_energy': y_tab.x,
+                'y_yield': y_tab.y,
+                'breakpoints': y_tab.breakpoints,
+                'interpolation': y_tab.interpolation
+            }
+            return None, df_y
+
+        else: 
+            df_y = pd.DataFrame({
+                'y_inc_energy': y_tab.x,
+                'y_yield': y_tab.y
+            })
+            df_y['section'] = abbrev
+
+            df_y.attrs = {
+                'breakpoints': y_tab.breakpoints,
+                'interpolation': y_tab.interpolation
+            }
 
         # Sub‐distribution list: one dict per incident energy
 
@@ -143,12 +195,13 @@ def extract_sections(mat, mf, mt):
                     'NA':             NA,
                     'NW':             NW,
                     'NEP':            NEP,
-                    'y_yield':        y_tab.y,
-                    'y_inc_energy':   y_tab.x
                 })
 
         # Create DataFrame from list of dicts
-        return pd.DataFrame.from_records(records)
+
+        df = pd.DataFrame.from_records(records)
+
+        return df, df_y
 
     # Other MFs
     else:
@@ -188,19 +241,29 @@ def save_element_h5(mat_path, out_dir):
         for (mf, mt), abbrev in SECTIONS_ABBREVS.items():
             if mf != 23 or (mf, mt) not in mat.section_data:
                 continue
-            df = extract_sections(mat, mf, mt)
+            df, df_y = extract_sections(mat, mf, mt)
             g  = xs_grp.create_group(abbrev)
             g.create_dataset(
                 "energy",
-                data=df["energy_eV"].values,
+                data=df_y["energy_eV"].values,
                 dtype="f8"
             )
 
             g.create_dataset(
                 "cross_section",
-                data=df["cross_section"].values,
+                data=df_y["cross_section"].values,
                 dtype="f8"
             )
+
+            if hasattr(df_y, "attrs"):
+                bpts = df_y.attrs.get("breakpoints", None)
+                interp = df_y.attrs.get("interpolation", None)
+
+                if bpts is not None:
+                    g.create_dataset("breakpoints", data=bpts, dtype="f8")
+
+                if interp is not None:
+                    g.create_dataset("interpolation", data=interp, dtype="f8")
 
         # distributions (MF=26)
         dist_grp = h5f.create_group("distributions")
@@ -208,33 +271,61 @@ def save_element_h5(mat_path, out_dir):
             if mf != 26 or (mf, mt) not in mat.section_data:
                 continue
 
-            df = extract_sections(mat, mf, mt)
+            df, df_y = extract_sections(mat, mf, mt)
             g  = dist_grp.create_group(abbrev)
+
+            if hasattr(df_y, "attrs"):
+                bpts = df_y.attrs.get("breakpoints", None)
+                interp = df_y.attrs.get("interpolation", None)
+
+                if bpts is not None:
+                    g.create_dataset("y_breakpoints", data=bpts, dtype="f8")
+
+                if interp is not None:
+                    g.create_dataset("y_interpolation", data=interp, dtype="f8")
 
             if mt == 525:
                 g.create_dataset(
-                    "energy",
-                    data=df["energy_eV"].values,
+                    "y_inc_energy",
+                    data=df_y["y_inc_energy"].values,
                     dtype="f8"
                 )
                 g.create_dataset(
-                    "y",
-                    data=df["y"].values,
+                    "y_yield",
+                    data=df_y["y_yield"].values,
                     dtype="f8"
                 )
 
-            if mt == 528:
+                g.create_dataset(
+                    "inc_energy",
+                    data=df["inc_energy"].values,
+                    dtype="f8"
+                )
+                g.create_dataset(
+                    "mu",
+                    data=df["mu"].values,
+                    dtype="f8"
+                )
+                g.create_dataset(
+                    "probability",
+                    data=df["prob"].values,
+                    dtype="f8"
+                )
+                continue
+        
+            elif mt == 528:
                 g.create_dataset(
                     "energy",
-                    data=df["energy_eV"].values,
+                    data=df_y["energy_eV"].values,
                     dtype="f8"
                 )
                 g.create_dataset(
                     "avg_loss",
-                    data=df["avg_loss_eV"].values,
+                    data=df_y["avg_loss_eV"].values,
                     dtype="f8"
                 )
                 continue
+
 
             # full energy–energy distribution
             if not df.empty and 'inc_energy_eV' in df.columns:
@@ -255,12 +346,12 @@ def save_element_h5(mat_path, out_dir):
                 )
                 g.create_dataset(
                     "y_yield",
-                    data=np.array(df["y_yield"].tolist()),
+                    data=np.array(df_y["y_yield"].tolist()),
                     dtype="f8"
                 )
                 g.create_dataset(
                     "y_inc_energy",
-                    data=np.array(df["y_inc_energy"].tolist()),
+                    data=np.array(df_y["y_inc_energy"].tolist()),
                     dtype="f8"
                 )
 
