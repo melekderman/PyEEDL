@@ -9,7 +9,7 @@ A tool for preparing electron transport data for use in [MCDC](https://github.co
 ```bash
 python3 -m venv pyeedl-env
 source pyeedl-env/bin/activate
-pip install endf
+pip install endf pandas numpy h5py
 git clone https://github.com/melekderman/PyEEDL.git
 ```
 

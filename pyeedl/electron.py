@@ -12,7 +12,7 @@ import pandas as pd
 import numpy as np
 import endf
 
-from data import *
+from data import PERIODIC_TABLE, SECTIONS_ABBREVS
 from function import parse_mf26_mt525
 
 def extract_sections(mat, mf, mt):
@@ -198,7 +198,7 @@ def save_element_h5(mat_path, out_dir):
     """
 
     fname = os.path.basename(mat_path)
-    m = re.search(r'Z(\d{3})000', fname)
+    m = re.search(r'ZA(\d{3})000', fname)
     mat = endf.Material(mat_path)
     Z = int(m.group(1))
     entry = PERIODIC_TABLE.get(Z, {})
