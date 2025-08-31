@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+# Tool specific
+eedl/
+mcdc-electron/
+raw_data/
+
 # Distribution / packaging
 .Python
 build/

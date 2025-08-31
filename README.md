@@ -23,9 +23,15 @@ cd PyEEDL/
 python download_data.py
 ```
 
-### 3. Generate the HDF5 files:
+### 3.1 Generate the HDF5 files for raw data:
 
 ```bash
 cd PyEEDL/pyeedl
-python run.py
+python create_raw_data.py
+```
+### 3.2 Generate the HDF5 files for MCDC:
+
+```bash
+cd PyEEDL/pyeedl
+python create_mcdc_data.py
 ```
