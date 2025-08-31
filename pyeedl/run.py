@@ -3,7 +3,7 @@ from electron import save_element_h5
 
 def main():
     IN_DIR  = "../eedl"
-    OUT_DIR = "../mcdc-electron"
+    OUT_DIR = "../raw_data"
     os.makedirs(OUT_DIR, exist_ok=True)
 
     for Z in range(1, 101):
