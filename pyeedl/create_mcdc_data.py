@@ -10,6 +10,8 @@ base_dir = os.getcwd()
 raw_dir = os.path.join(base_dir, "../raw_data")
 files = sorted(glob.glob(os.path.join(raw_dir, "*.h5")))
 
+BARN_TO_CM2 = 1e-24
+
 in_path = files[0]
 print(f"Reading: {in_path}")
 
@@ -94,6 +96,16 @@ with h5py.File(in_path, "r") as src:
     xs_exc = linear_interpolation(xs_energy_grid, exc_xs_energy, exc_xs)
     xs_ion_total = linear_interpolation(xs_energy_grid, ion_total_xs_energy, ion_total_xs)
     
+    xs_sc_sa = xs_sc_total - xs_sc_la
+
+    # barn -> cm^2
+    total_xs_cm2 = np.asarray(total_xs, dtype="f8") * BARN_TO_CM2
+    xs_sc_total  = np.asarray(xs_sc_total, dtype="f8") * BARN_TO_CM2
+    xs_sc_la     = np.asarray(xs_sc_la,    dtype="f8") * BARN_TO_CM2
+    xs_sc_sa     = np.asarray(xs_sc_sa,    dtype="f8") * BARN_TO_CM2
+    xs_brem      = np.asarray(xs_brem,     dtype="f8") * BARN_TO_CM2
+    xs_exc       = np.asarray(xs_exc,      dtype="f8") * BARN_TO_CM2
+    xs_ion_total = np.asarray(xs_ion_total,dtype="f8") * BARN_TO_CM2
     
     with h5py.File(out_path, "w") as h5f:
         h5f.create_dataset("atomic_weight_ratio", data=AWR)
@@ -104,8 +116,10 @@ with h5py.File(in_path, "r") as src:
         h5f.create_group("electron_reactions/total")
         h5f.create_dataset("electron_reactions/total/xs", data=total_xs)
         # elastic scattering
+        # total
         h5f.create_group("electron_reactions/elastic_scattering")
         h5f.create_dataset("electron_reactions/elastic_scattering/xs", data=xs_sc_total)
+        # Large Angle
         h5f.create_group("electron_reactions/elastic_scattering/large_angle")
         h5f.create_dataset("electron_reactions/elastic_scattering/large_angle/xs", data=xs_sc_la)
         h5f.create_group("electron_reactions/elastic_scattering/large_angle/scattering_cosine")
@@ -114,6 +128,9 @@ with h5py.File(in_path, "r") as src:
         h5f.create_dataset("electron_reactions/elastic_scattering/large_angle/scattering_cosine/energy_offset", data=energy_offset)
         h5f.create_dataset("electron_reactions/elastic_scattering/large_angle/scattering_cosine/value", data=val)
         h5f.create_dataset("electron_reactions/elastic_scattering/large_angle/scattering_cosine/PDF", data=PDF)
+        # Small Angle
+        h5f.create_group("electron_reactions/elastic_scattering/small_angle")
+        h5f.create_dataset("electron_reactions/elastic_scattering/small_angle/xs", data=xs_sc_sa)
         # bremsstrahlung
         h5f.create_group("electron_reactions/bremsstrahlung")
         h5f.create_dataset("electron_reactions/bremsstrahlung/xs", data=xs_brem)

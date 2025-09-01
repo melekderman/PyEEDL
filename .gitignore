@@ -10,6 +10,7 @@ __pycache__/
 eedl/
 mcdc-electron/
 raw_data/
+.ipynb
 
 # Distribution / packaging
 .Python

@@ -63,24 +63,13 @@ def parse_mf26_mt525(raw: str):
 
     return groups
 
+
 def linear_interpolation(xs_energy_grid, energy_ref, xs_ref):
     xs_new = np.interp(np.array(xs_energy_grid), np.array(energy_ref), np.array(xs_ref))
     if np.any (xs_energy_grid > energy_ref[-1]):
         print("Warning: xs_energy_grid has values larger than energy grid max.")
     return xs_new
 
-def create_pdf_by_offsets(pdf, offsets):
-    p = pdf.copy()
-    off = offsets
-    for i in range(off.size - 1):
-        s = slice(off[i], off[i+1])
-        seg = p[s]
-        ssum = seg.sum()
-        if ssum > 0:
-            p[s] = seg / ssum
-        elif seg.size > 0:
-            p[s] = 1.0 / seg.size
-    return p
 
 def build_pdf(inc_energy, value, probability):
     inc = np.array(inc_energy)
@@ -108,6 +97,5 @@ def build_pdf(inc_energy, value, probability):
 
     energy_grid = np.asarray(energy_vals, dtype="f8")
     energy_offset = np.asarray(offsets[:-1], dtype="i8")
-    PDF = create_pdf_by_offsets(pdf, energy_offset)
 
-    return energy_grid, energy_offset, val, PDF
+    return energy_grid, energy_offset, val, pdf
