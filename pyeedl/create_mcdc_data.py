@@ -3,7 +3,7 @@ import numpy as np
 import h5py
 
 
-from function import linear_interpolation, build_pdf
+from function import linear_interpolation, build_pdf, small_angle_scattering_cosine
 
 base_dir = os.getcwd()
 #base_dir = os.path.dirname(__file__)
@@ -16,9 +16,9 @@ in_path = files[0]
 print(f"Reading: {in_path}")
 
 with h5py.File(in_path, "r") as src:
-    Z = src["metadata/Z"]
-    AWR = src["metadata/AWR"]
-    Sym = src["metadata/Sym"].asstr()[()]
+    Z   = int(src["/metadata/Z"][()])
+    AWR = float(src["/metadata/AWR"][()])
+    Sym = src["/metadata/Sym"].asstr()[()]
 
     # total xs
     total_energy = src["/total_xs/cross_section/energy"][:]
@@ -88,7 +88,7 @@ with h5py.File(in_path, "r") as src:
     sym_str = Sym
     out_path = os.path.join(out_dir, f"{sym_str}.h5")
     
-    xs_energy_grid = total_scat_xs_energy
+    xs_energy_grid = total_energy
     xs_sc_total = linear_interpolation(xs_energy_grid, total_scat_xs_energy, total_scat_xs)
     xs_sc_la = linear_interpolation(xs_energy_grid, la_scat_xs_energy, la_scat_xs)
     # print(f" DEBUG: size brem energy: {brem_xs_energy.size}, size brem xs: {brem_xs.size}")
@@ -99,7 +99,7 @@ with h5py.File(in_path, "r") as src:
     xs_sc_sa = xs_sc_total - xs_sc_la
 
     # barn -> cm^2
-    total_xs_cm2 = np.asarray(total_xs, dtype="f8") * BARN_TO_CM2
+    xs_total = np.asarray(total_xs, dtype="f8") * BARN_TO_CM2
     xs_sc_total  = np.asarray(xs_sc_total, dtype="f8") * BARN_TO_CM2
     xs_sc_la     = np.asarray(xs_sc_la,    dtype="f8") * BARN_TO_CM2
     xs_sc_sa     = np.asarray(xs_sc_sa,    dtype="f8") * BARN_TO_CM2
@@ -110,11 +110,12 @@ with h5py.File(in_path, "r") as src:
     with h5py.File(out_path, "w") as h5f:
         h5f.create_dataset("atomic_weight_ratio", data=AWR)
         h5f.create_dataset("atomic_number", data=Z)
+        h5f.create_dataset("element_name", data=Sym)
         h5f.create_group("electron_reactions")
         h5f.create_dataset("electron_reactions/xs_energy_grid", data=xs_energy_grid)
         # total
         h5f.create_group("electron_reactions/total")
-        h5f.create_dataset("electron_reactions/total/xs", data=total_xs)
+        h5f.create_dataset("electron_reactions/total/xs", data=xs_total)
         # elastic scattering
         # total
         h5f.create_group("electron_reactions/elastic_scattering")
@@ -131,6 +132,13 @@ with h5py.File(in_path, "r") as src:
         # Small Angle
         h5f.create_group("electron_reactions/elastic_scattering/small_angle")
         h5f.create_dataset("electron_reactions/elastic_scattering/small_angle/xs", data=xs_sc_sa)
+        mask = xs_sc_sa > 0.0
+        eg_sa, off_sa, val_sa, pdf_sa = small_angle_scattering_cosine(Z, np.array(xs_energy_grid)[mask], n_mu=200)
+        h5f.create_group("electron_reactions/elastic_scattering/small_angle/scattering_cosine")
+        h5f.create_dataset("electron_reactions/elastic_scattering/small_angle/scattering_cosine/energy_grid", data=eg_sa)
+        h5f.create_dataset("electron_reactions/elastic_scattering/small_angle/scattering_cosine/energy_offset", data=off_sa)
+        h5f.create_dataset("electron_reactions/elastic_scattering/small_angle/scattering_cosine/value", data=val_sa)
+        h5f.create_dataset("electron_reactions/elastic_scattering/small_angle/scattering_cosine/PDF", data=pdf_sa)
         # bremsstrahlung
         h5f.create_group("electron_reactions/bremsstrahlung")
         h5f.create_dataset("electron_reactions/bremsstrahlung/xs", data=xs_brem)

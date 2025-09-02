@@ -344,3 +344,7 @@ SUBSHELL_LABELS = {
     561: "P3",
     570: "Q1",
 }
+
+# https://physics.nist.gov/cuu/pdf/wallet_2018.pdf
+FINE_STRUCTURE = 7.2973525693e-3  # fine-structure constant (NIST2018)
+ELECTRON_MASS = 0.51099895069  # MeV/c^2 electron mass (NIST2018)

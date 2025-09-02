@@ -5,6 +5,7 @@
 # SPDX-License-Identifier: MIT
 # -----------------------------------------------------------------------------
 import numpy as np
+from data import FINE_STRUCTURE, ELECTRON_MASS
 
 
 def float_endf(s: str) -> float:
@@ -99,3 +100,32 @@ def build_pdf(inc_energy, value, probability):
     energy_offset = np.asarray(offsets[:-1], dtype="i8")
 
     return energy_grid, energy_offset, val, pdf
+
+
+def small_angle_eta(Z, energy_eV):
+    alpha = FINE_STRUCTURE
+    mec2 = ELECTRON_MASS                              # MeV
+    T  = np.array(energy_eV, dtype="f8") / 1e6        # MeV
+    pc  = np.sqrt(T * (T + 2.0*mec2))                 # MeV
+    E  = T + mec2                                     # MeV
+    beta = pc / E
+    tau  = T / mec2
+    term = (alpha * mec2 / (0.885 * pc))**2
+    corr = 1.13 + 3.76 * (alpha * Z / beta)**2
+    return 0.25 * term * (Z**(2.0/3.0)) * corr * np.sqrt(tau/(tau+1.0))
+
+
+def small_angle_scattering_cosine(Z, energy_eV, n_mu):
+    energy_grid = np.array(energy_eV, dtype="f8").ravel()
+
+    mu = np.linspace(0.999999, 1.0, n_mu, dtype="f8")
+    eta = small_angle_eta(Z, energy_grid)
+    M = mu.size
+    value = np.tile(mu, energy_grid.size)
+    PDF = np.empty(energy_grid.size * M, dtype="f8")
+    for i, et in enumerate(eta):
+        f = 1.0 / (et + (1.0 - mu))**2
+        s = f.sum()
+        PDF[i*M:(i+1)*M] = f / s if s > 0 else 1.0 / M
+    energy_offset = np.arange(0, (energy_grid.size + 1) * M, M, dtype="i8")
+    return energy_grid, energy_offset[:-1], value, PDF

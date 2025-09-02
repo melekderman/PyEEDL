@@ -248,7 +248,7 @@ def save_element_h5(mat_path, out_dir):
     with h5py.File(h5_path, "w") as h5f:
         # metadata group
         meta = h5f.create_group("metadata")
-        meta.create_dataset("Z", data=Z)
+        meta.create_dataset("Z", data=np.int64(Z))
         meta.create_dataset("Sym", data=sym)
         if sec0:
             meta.create_dataset("ZA", data=sec0["ZA"])
