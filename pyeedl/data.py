@@ -75,10 +75,22 @@ MF_MT = {
     (26, 554): "O5 (5d5/2) Electroionization Subshell Energy Spectra",
     (26, 555): "O6 (5f5/2) Electroionization Subshell Energy Spectra",
     (26, 556): "O7 (5f7/2) Electroionization Subshell Energy Spectra",
+    (26, 557): "O8 (5g7/2) Electroionization Subshell Energy Spectra",
+    (26, 558): "O9 (5g9/2) Electroionization Subshell Energy Spectra",
     (26, 559): "P1 (6s1/2) Electroionization Subshell Energy Spectra",
     (26, 560): "P2 (6p1/2) Electroionization Subshell Energy Spectra",
     (26, 561): "P3 (6p3/2) Electroionization Subshell Energy Spectra",
+    (26, 562): "P4 (6d3/2) Electroionization Subshell Energy Spectra",
+    (26, 563): "P5 (6d5/2) Electroionization Subshell Energy Spectra",
+    (26, 564): "P6 (6f5/2) Electroionization Subshell Energy Spectra",
+    (26, 565): "P7 (6f7/2) Electroionization Subshell Energy Spectra",
+    (26, 566): "P8 (6g7/2) Electroionization Subshell Energy Spectra",
+    (26, 567): "P9 (6g9/2) Electroionization Subshell Energy Spectra",
+    (26, 568): "P10 (6h7/2) Electroionization Subshell Energy Spectra",
+    (26, 569): "P11 (6h9/2) Electroionization Subshell Energy Spectra",
     (26, 570): "Q1 (7s1/2) Electroionization Subshell Energy Spectra",
+    (26, 571): "Q2 (7p1/2) Electroionization Subshell Energy Spectra",
+    (26, 572): "Q3 (7p3/2) Electroionization Subshell Energy Spectra"
 }
 
 SECTIONS_ABBREVS = {
@@ -112,10 +124,22 @@ SECTIONS_ABBREVS = {
     (23, 554): "xs_O5",
     (23, 555): "xs_O6",
     (23, 556): "xs_O7",
+    (23, 557): "xs_O8",
+    (23, 558): "xs_O9",
     (23, 559): "xs_P1",
     (23, 560): "xs_P2",
     (23, 561): "xs_P3",
+    (23, 562): "xs_P4",
+    (23, 563): "xs_P5",
+    (23, 564): "xs_P6",
+    (23, 565): "xs_P7",
+    (23, 566): "xs_P8",
+    (23, 567): "xs_P9",
+    (23, 568): "xs_P10",
+    (23, 569): "xs_P11",
     (23, 570): "xs_Q1",
+    (23, 571): "xs_Q2",
+    (23, 572): "xs_Q3",
 
     # MF=26 : Angular and Energy Distributions
     (26, 525): "ang_lge",
@@ -144,10 +168,22 @@ SECTIONS_ABBREVS = {
     (26, 554): "spec_O5",
     (26, 555): "spec_O6",
     (26, 556): "spec_O7",
+    (26, 557): "spec_O8",
+    (26, 558): "spec_O9",
     (26, 559): "spec_P1",
     (26, 560): "spec_P2",
     (26, 561): "spec_P3",
+    (26, 562): "spec_P4",
+    (26, 563): "spec_P5",
+    (26, 564): "spec_P6",
+    (26, 565): "spec_P7",
+    (26, 566): "spec_P8",
+    (26, 567): "spec_P9",
+    (26, 568): "spec_P10",
+    (26, 569): "spec_P11",
     (26, 570): "spec_Q1",
+    (26, 571): "spec_Q2",
+    (26, 572): "spec_Q3"
 }
 
 # Mapping of MF=23 cross-section fields to their ENDF‑6 descriptions
@@ -193,6 +229,10 @@ MF26 = {
     "distribution.distribution.E'":   "Array of outgoing energies E′ (eV)",  
     "distribution.distribution.b":    "PDF or coefficient array for each outgoing-energy point",  
 }
+
+# Units
+# https://www-nds.iaea.org/public/documents/endf/endf102/April-2001_version/fmts-00.pdf 
+# Page 0.20
 
 PERIODIC_TABLE = {
     1:   {"name": "Hydrogen",      "symbol": "H"},
@@ -339,12 +379,26 @@ SUBSHELL_LABELS = {
     554: "O5",
     555: "O6",
     556: "O7",
+    557: "O8",
+    558: "O9",
     559: "P1",
     560: "P2",
     561: "P3",
+    562: "P4",
+    563: "P5",
+    564: "P6",
+    565: "P7",
+    566: "P8",
+    567: "P9",
+    568: "P10",
+    569: "P11",
     570: "Q1",
+    571: "Q2",
+    572: "Q3"
 }
 
+# CONSTANTS
 # https://physics.nist.gov/cuu/pdf/wallet_2018.pdf
 FINE_STRUCTURE = 7.2973525693e-3  # fine-structure constant (NIST2018)
-ELECTRON_MASS = 0.51099895069  # MeV/c^2 electron mass (NIST2018)
+ELECTRON_MASS = 0.51099895069     # MeV/c^2 electron mass (NIST2018)
+BARN_TO_CM2 = 1e-24

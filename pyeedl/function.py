@@ -115,7 +115,7 @@ def small_angle_eta(Z, energy_eV):
     return 0.25 * term * (Z**(2.0/3.0)) * corr * np.sqrt(tau/(tau+1.0))
 
 
-def small_angle_scattering_cosine(Z, energy_eV, n_mu):
+def small_angle_scattering_cosine2(Z, energy_eV, n_mu):
     energy_grid = np.array(energy_eV, dtype="f8").ravel()
 
     mu = np.linspace(0.999999, 1.0, n_mu, dtype="f8")
@@ -129,3 +129,33 @@ def small_angle_scattering_cosine(Z, energy_eV, n_mu):
         PDF[i*M:(i+1)*M] = f / s if s > 0 else 1.0 / M
     energy_offset = np.arange(0, (energy_grid.size + 1) * M, M, dtype="i8")
     return energy_grid, energy_offset[:-1], value, PDF
+
+def small_angle_scattering_cosine(Z, energy_eV, n_mu):
+    energy_grid = np.array(energy_eV, dtype="f8").ravel()
+    if energy_grid.size == 0:
+        return np.array([], dtype="f8"), np.array([0], dtype="i8"), np.array([], dtype="f8"), np.array([], dtype="f8")
+
+    mu = np.linspace(0.999999, 1.0, n_mu, endpoint=False, dtype="f8")
+    eta = small_angle_eta(Z, energy_grid)
+
+    N, M = energy_grid.size, mu.size
+    value = np.empty(N*M, dtype="f8")
+    PDF   = np.empty(N*M, dtype="f8")
+
+    dmu = np.diff(mu)
+    widths = np.empty(M, dtype="f8")
+    if dmu.size:
+        widths[:-1] = dmu
+        widths[-1] = dmu[-1]
+    else:
+        widths[:] = 1.0
+
+    for i, et in enumerate(eta):
+        s = slice(i*M, (i+1)*M)
+        value[s] = mu
+        f = 1.0 / (et + (1.0 - mu))**2
+        denom = np.dot(f, widths)
+        PDF[s] = f / denom if denom > 0 else 0.0
+
+    energy_offset = np.arange(0, (N+1)*M, M, dtype="i8")
+    return energy_grid, energy_offset, value, PDF

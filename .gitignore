@@ -8,9 +8,10 @@ __pycache__/
 
 # Tool specific
 eedl/
-mcdc-electron/
+mcdc_data/
 raw_data/
 .ipynb
+yedek/
 
 # Distribution / packaging
 .Python
