@@ -6,10 +6,31 @@
 # -----------------------------------------------------------------------------
 
 __all__ = [
+    # Electron data (EEDL)
     "MF_MT",
     "SECTIONS_ABBREVS",
+    "MF23",
     "MF26",
+    "SUBSHELL_LABELS",
+    # Photon data (EPDL)
+    "PHOTON_MF_MT",
+    "PHOTON_SECTIONS_ABBREVS",
+    "MF27",
+    # Atomic data (EADL)
+    "ATOMIC_MF_MT",
+    "ATOMIC_SECTIONS_ABBREVS",
+    "MF28",
+    "SUBSHELL_DESIGNATORS",
+    "SUBSHELL_DESIGNATORS_INV",
+    # Common
     "PERIODIC_TABLE",
+    # Constants
+    "FINE_STRUCTURE",
+    "ELECTRON_MASS",
+    "BARN_TO_CM2",
+    "PLANCK_CONSTANT",
+    "SPEED_OF_LIGHT",
+    "ELECTRON_CHARGE",
 ]
 
 MF_MT = {
@@ -397,8 +418,196 @@ SUBSHELL_LABELS = {
     572: "Q3"
 }
 
+# =============================================================================
+# PHOTON DATA (EPDL) - Evaluated Photon Data Library
+# =============================================================================
+
+# MF_MT for photon interactions
+PHOTON_MF_MT = {
+    # MF=23: Photon Cross Sections
+    (23, 501): "Total Photon Cross Section",
+    (23, 502): "Coherent (Rayleigh) Scattering Cross Section",
+    (23, 504): "Incoherent (Compton) Scattering Cross Section",
+    (23, 516): "Pair Production Cross Section (Total)",
+    (23, 517): "Pair Production Cross Section (Nuclear Field)",
+    (23, 518): "Pair Production Cross Section (Electron Field - Triplet)",
+    (23, 522): "Total Photoelectric Cross Section",
+    # Subshell photoelectric cross sections (same MT codes as electron)
+    (23, 534): "K (1S1/2) Photoelectric Subshell Cross Section",
+    (23, 535): "L1 (2s1/2) Photoelectric Subshell Cross Section",
+    (23, 536): "L2 (2p1/2) Photoelectric Subshell Cross Section",
+    (23, 537): "L3 (2p3/2) Photoelectric Subshell Cross Section",
+    (23, 538): "M1 (3s1/2) Photoelectric Subshell Cross Section",
+    (23, 539): "M2 (3p1/2) Photoelectric Subshell Cross Section",
+    (23, 540): "M3 (3p3/2) Photoelectric Subshell Cross Section",
+    (23, 541): "M4 (3d3/2) Photoelectric Subshell Cross Section",
+    (23, 542): "M5 (3d5/2) Photoelectric Subshell Cross Section",
+    (23, 543): "N1 (4s1/2) Photoelectric Subshell Cross Section",
+    (23, 544): "N2 (4p1/2) Photoelectric Subshell Cross Section",
+    (23, 545): "N3 (4p3/2) Photoelectric Subshell Cross Section",
+    (23, 546): "N4 (4d3/2) Photoelectric Subshell Cross Section",
+    (23, 547): "N5 (4d5/2) Photoelectric Subshell Cross Section",
+    (23, 548): "N6 (4f5/2) Photoelectric Subshell Cross Section",
+    (23, 549): "N7 (4f7/2) Photoelectric Subshell Cross Section",
+    (23, 550): "O1 (5s1/2) Photoelectric Subshell Cross Section",
+    (23, 551): "O2 (5p1/2) Photoelectric Subshell Cross Section",
+    (23, 552): "O3 (5p3/2) Photoelectric Subshell Cross Section",
+    (23, 553): "O4 (5d3/2) Photoelectric Subshell Cross Section",
+    (23, 554): "O5 (5d5/2) Photoelectric Subshell Cross Section",
+    (23, 555): "O6 (5f5/2) Photoelectric Subshell Cross Section",
+    (23, 556): "O7 (5f7/2) Photoelectric Subshell Cross Section",
+    (23, 557): "O8 (5g7/2) Photoelectric Subshell Cross Section",
+    (23, 558): "O9 (5g9/2) Photoelectric Subshell Cross Section",
+    (23, 559): "P1 (6s1/2) Photoelectric Subshell Cross Section",
+    (23, 560): "P2 (6p1/2) Photoelectric Subshell Cross Section",
+    (23, 561): "P3 (6p3/2) Photoelectric Subshell Cross Section",
+    (23, 570): "Q1 (7s1/2) Photoelectric Subshell Cross Section",
+
+    # MF=27: Form Factors and Scattering Functions
+    (27, 502): "Coherent Scattering Form Factor",
+    (27, 504): "Incoherent Scattering Function",
+    (27, 505): "Imaginary Anomalous Scattering Factor",
+    (27, 506): "Real Anomalous Scattering Factor",
+}
+
+PHOTON_SECTIONS_ABBREVS = {
+    # MF=23: Photon Cross Sections
+    (23, 501): "xs_tot",
+    (23, 502): "xs_coherent",
+    (23, 504): "xs_incoherent",
+    (23, 516): "xs_pair_total",
+    (23, 517): "xs_pair_nuclear",
+    (23, 518): "xs_pair_electron",
+    (23, 522): "xs_photoelectric",
+    # Subshell photoelectric
+    (23, 534): "xs_pe_K",
+    (23, 535): "xs_pe_L1",
+    (23, 536): "xs_pe_L2",
+    (23, 537): "xs_pe_L3",
+    (23, 538): "xs_pe_M1",
+    (23, 539): "xs_pe_M2",
+    (23, 540): "xs_pe_M3",
+    (23, 541): "xs_pe_M4",
+    (23, 542): "xs_pe_M5",
+    (23, 543): "xs_pe_N1",
+    (23, 544): "xs_pe_N2",
+    (23, 545): "xs_pe_N3",
+    (23, 546): "xs_pe_N4",
+    (23, 547): "xs_pe_N5",
+    (23, 548): "xs_pe_N6",
+    (23, 549): "xs_pe_N7",
+    (23, 550): "xs_pe_O1",
+    (23, 551): "xs_pe_O2",
+    (23, 552): "xs_pe_O3",
+    (23, 553): "xs_pe_O4",
+    (23, 554): "xs_pe_O5",
+    (23, 555): "xs_pe_O6",
+    (23, 556): "xs_pe_O7",
+    (23, 557): "xs_pe_O8",
+    (23, 558): "xs_pe_O9",
+    (23, 559): "xs_pe_P1",
+    (23, 560): "xs_pe_P2",
+    (23, 561): "xs_pe_P3",
+    (23, 570): "xs_pe_Q1",
+
+    # MF=27: Form Factors
+    (27, 502): "ff_coherent",
+    (27, 504): "sf_incoherent",
+    (27, 505): "asf_imag",
+    (27, 506): "asf_real",
+}
+
+# MF=27 field descriptions for photon form factors
+MF27 = {
+    "sigma.x": "Array of momentum transfer values (1/Angstrom) or energy (eV)",
+    "sigma.y": "Array of form factor or scattering function values",
+    "sigma.breakpoints": "NBT: number of points in each interpolation region",
+    "sigma.interpolation": "INT: interpolation law code for each region",
+    "ZA": "ZA identifier of the target",
+    "AWR": "Atomic weight ratio of the target",
+}
+
+# =============================================================================
+# ATOMIC DATA (EADL) - Evaluated Atomic Data Library
+# =============================================================================
+
+# MF_MT for atomic relaxation data
+ATOMIC_MF_MT = {
+    # MF=28: Atomic Relaxation Data
+    (28, 533): "Atomic Relaxation Data",
+}
+
+ATOMIC_SECTIONS_ABBREVS = {
+    (28, 533): "atomic_relax",
+}
+
+# MF=28 field descriptions for atomic relaxation
+MF28 = {
+    "NSS": "Number of subshells for which data is given",
+    "SUBI": "Subshell designator (ENDF-6 designation)",
+    "EBI": "Subshell binding energy (eV)",
+    "ELN": "Number of electrons in subshell when neutral",
+    "NTR": "Number of transitions for this subshell",
+    "SUBJ": "Designator for subshell from which electron originates",
+    "SUBK": "Designator for subshell from which electron fills vacancy (0 for radiative)",
+    "ETR": "Energy of transition (eV)",
+    "FTR": "Fractional probability of transition",
+}
+
+# Subshell designators (ENDF-6 format)
+# Maps subshell index to orbital designation
+SUBSHELL_DESIGNATORS = {
+    1: "K",      # 1s1/2
+    2: "L1",     # 2s1/2
+    3: "L2",     # 2p1/2
+    4: "L3",     # 2p3/2
+    5: "M1",     # 3s1/2
+    6: "M2",     # 3p1/2
+    7: "M3",     # 3p3/2
+    8: "M4",     # 3d3/2
+    9: "M5",     # 3d5/2
+    10: "N1",    # 4s1/2
+    11: "N2",    # 4p1/2
+    12: "N3",    # 4p3/2
+    13: "N4",    # 4d3/2
+    14: "N5",    # 4d5/2
+    15: "N6",    # 4f5/2
+    16: "N7",    # 4f7/2
+    17: "O1",    # 5s1/2
+    18: "O2",    # 5p1/2
+    19: "O3",    # 5p3/2
+    20: "O4",    # 5d3/2
+    21: "O5",    # 5d5/2
+    22: "O6",    # 5f5/2
+    23: "O7",    # 5f7/2
+    24: "O8",    # 5g7/2
+    25: "O9",    # 5g9/2
+    26: "P1",    # 6s1/2
+    27: "P2",    # 6p1/2
+    28: "P3",    # 6p3/2
+    29: "P4",    # 6d3/2
+    30: "P5",    # 6d5/2
+    31: "P6",    # 6f5/2
+    32: "P7",    # 6f7/2
+    33: "P8",    # 6g7/2
+    34: "P9",    # 6g9/2
+    35: "P10",   # 6h9/2
+    36: "P11",   # 6h11/2
+    37: "Q1",    # 7s1/2
+    38: "Q2",    # 7p1/2
+    39: "Q3",    # 7p3/2
+}
+
+# Reverse mapping for subshell designators
+SUBSHELL_DESIGNATORS_INV = {v: k for k, v in SUBSHELL_DESIGNATORS.items()}
+
+# =============================================================================
 # CONSTANTS
+# =============================================================================
 # https://physics.nist.gov/cuu/pdf/wallet_2018.pdf
 FINE_STRUCTURE = 7.2973525693e-3  # fine-structure constant (NIST2018)
 ELECTRON_MASS = 0.51099895069     # MeV/c^2 electron mass (NIST2018)
 BARN_TO_CM2 = 1e-24
+PLANCK_CONSTANT = 6.62607015e-34  # J·s (NIST2018)
+SPEED_OF_LIGHT = 299792458.0      # m/s (exact)
+ELECTRON_CHARGE = 1.602176634e-19 # C (exact)
