@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 import endf
 
-from data import PERIODIC_TABLE, SECTIONS_ABBREVS, SUBSHELL_LABELS, BARN_TO_CM2
+from data import PERIODIC_TABLE, SECTIONS_ABBREVS, SUBSHELL_LABELS
 from function import parse_mf26_mt525, linear_interpolation, build_pdf, small_angle_scattering_cosine
 
 def extract_sections(mat, mf, mt):
@@ -544,7 +544,7 @@ def create_mcdc_file(in_path: str, out_dir: str) -> str:
             g = subs.create_group(shell)
             xs_e = subshell_xs_data[shell][f"xs_energy_{shell}"]
             xs_v = subshell_xs_data[shell][f"xs_{shell}"]
-            xs_on_grid = linear_interpolation(xs_energy_grid, xs_e, xs_v) * BARN_TO_CM2
+            xs_on_grid = linear_interpolation(xs_energy_grid, xs_e, xs_v)
             g.create_dataset("xs", data=xs_on_grid)
             inc = subshell_dist_data[shell][f"dist_inc_energy_{shell}"]
             out = subshell_dist_data[shell][f"dist_out_energy_{shell}"]
