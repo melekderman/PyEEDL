@@ -1,3 +1,6 @@
+[![DOI](https://zenodo.org/badge/1027875024.svg)](https://doi.org/10.5281/zenodo.18425378)
+
+
 # PyEEDL
 A tool for preparing electron transport data for use in [MCDC](https://github.com/CEMeNT-PSAAP/MCDC), derived from the Evaluated Electron Data Library ([EEDL](https://www-nds.iaea.org/epics/)).
 
