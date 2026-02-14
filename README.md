@@ -38,3 +38,24 @@ python create_raw_data.py
 cd PyEEDL/pyeedl
 python create_mcdc_data.py
 ```
+
+## Citation
+
+If you use **PyEEDL** in your research for parsing EEDL data or processing electron transport files, please cite it as follows:
+
+### BibTeX
+```latex
+@software{Derman_PyEEDL_2026,
+  author       = {Derman, Melek},
+  title        = {{PyEEDL: A Python tool for parsing and converting EEDL data from ENDF to HDF5 format}},
+  year         = {2026},
+  version      = {0.1.0-beta},
+  url          = {[https://github.com/melekderman/PyEEDL](https://github.com/melekderman/PyEEDL)},
+  note         = {A specialized parser for the Evaluated Electron Data Library (EEDL) designed for Python-based scientific workflows.}
+}
+```
+
+### APA
+```text
+Derman, M. (2026). PyEEDL: A Python-based EEDL parser for converting ENDF data to HDF5 format (Version 0.1.0-beta) [Computer software]. https://github.com/melekderman/PyEEDL
+```
