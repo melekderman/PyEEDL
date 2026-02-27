@@ -4,6 +4,8 @@
 #
 # SPDX-License-Identifier: MIT
 # -----------------------------------------------------------------------------
+import numpy as np
+from data import FINE_STRUCTURE, ELECTRON_MASS
 
 
 def float_endf(s: str) -> float:
@@ -62,3 +64,98 @@ def parse_mf26_mt525(raw: str):
 
     return groups
 
+
+def linear_interpolation(xs_energy_grid, energy_ref, xs_ref):
+    xs_new = np.interp(np.array(xs_energy_grid), np.array(energy_ref), np.array(xs_ref))
+    if np.any (xs_energy_grid > energy_ref[-1]):
+        print("Warning: xs_energy_grid has values larger than energy grid max.")
+    return xs_new
+
+
+def build_pdf(inc_energy, value, probability):
+    inc = np.array(inc_energy)
+    val = np.array(value)
+    pdf = np.array(probability)
+
+    energy_vals = []
+    offsets = [0]
+
+    if inc.size:
+        cur = inc[0]
+        cnt = 1
+        for e in inc[1:]:
+            if e == cur:
+                cnt += 1
+            else:
+                energy_vals.append(cur)
+                offsets.append(offsets[-1] + cnt)
+                cur = e
+                cnt = 1
+        energy_vals.append(cur)
+        offsets.append(offsets[-1] + cnt)
+    else:
+        offsets = [0]
+
+    energy_grid = np.asarray(energy_vals, dtype="f8")
+    energy_offset = np.asarray(offsets[:-1], dtype="i8")
+
+    return energy_grid, energy_offset, val, pdf
+
+
+def small_angle_eta(Z, energy_eV):
+    alpha = FINE_STRUCTURE
+    mec2 = ELECTRON_MASS                              # MeV
+    T  = np.array(energy_eV, dtype="f8") / 1e6        # MeV
+    pc  = np.sqrt(T * (T + 2.0*mec2))                 # MeV
+    E  = T + mec2                                     # MeV
+    beta = pc / E
+    tau  = T / mec2
+    term = (alpha * mec2 / (0.885 * pc))**2
+    corr = 1.13 + 3.76 * (alpha * Z / beta)**2
+    return 0.25 * term * (Z**(2.0/3.0)) * corr * np.sqrt(tau/(tau+1.0))
+
+
+def small_angle_scattering_cosine2(Z, energy_eV, n_mu):
+    energy_grid = np.array(energy_eV, dtype="f8").ravel()
+
+    mu = np.linspace(0.999999, 1.0, n_mu, dtype="f8")
+    eta = small_angle_eta(Z, energy_grid)
+    M = mu.size
+    value = np.tile(mu, energy_grid.size)
+    PDF = np.empty(energy_grid.size * M, dtype="f8")
+    for i, et in enumerate(eta):
+        f = 1.0 / (et + (1.0 - mu))**2
+        s = f.sum()
+        PDF[i*M:(i+1)*M] = f / s if s > 0 else 1.0 / M
+    energy_offset = np.arange(0, (energy_grid.size + 1) * M, M, dtype="i8")
+    return energy_grid, energy_offset[:-1], value, PDF
+
+def small_angle_scattering_cosine(Z, energy_eV, n_mu):
+    energy_grid = np.array(energy_eV, dtype="f8").ravel()
+    if energy_grid.size == 0:
+        return np.array([], dtype="f8"), np.array([0], dtype="i8"), np.array([], dtype="f8"), np.array([], dtype="f8")
+
+    mu = np.linspace(0.999999, 1.0, n_mu, endpoint=False, dtype="f8")
+    eta = small_angle_eta(Z, energy_grid)
+
+    N, M = energy_grid.size, mu.size
+    value = np.empty(N*M, dtype="f8")
+    PDF   = np.empty(N*M, dtype="f8")
+
+    dmu = np.diff(mu)
+    widths = np.empty(M, dtype="f8")
+    if dmu.size:
+        widths[:-1] = dmu
+        widths[-1] = dmu[-1]
+    else:
+        widths[:] = 1.0
+
+    for i, et in enumerate(eta):
+        s = slice(i*M, (i+1)*M)
+        value[s] = mu
+        f = 1.0 / (et + (1.0 - mu))**2
+        denom = np.dot(f, widths)
+        PDF[s] = f / denom if denom > 0 else 0.0
+
+    energy_offset = np.arange(0, (N+1)*M, M, dtype="i8")
+    return energy_grid, energy_offset, value, PDF

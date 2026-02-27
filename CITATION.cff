@@ -1,0 +1,37 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: PyEEDL
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Melek
+    family-names: Derman
+    email: dermanm@oregonstate.edu
+    affiliation: Oregon State University
+    orcid: 'https://orcid.org/0000-0002-6124-6771'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.18425379
+    description: The URL of version v0.1.0-beta of the software
+repository-code: 'https://github.com/melekderman/PyEEDL.git'
+abstract: >-
+  This tool is designed to extract Evaluated Electron Data
+  Library (EEDL) and electron transport data into an HDF5
+  file. It can also be used to prepare MC/DC electron
+  transport dataset.
+keywords:
+  - Nuclear Science
+  - Nuclear Engineering
+  - Charged Particle Transport
+  - Electron Data
+  - EEDL
+  - EPICS
+  - Single Scattering Electron Transport
+license: MIT
+commit: d98f5ad
+version: v0.1.0-beta
+date-released: '2026-01-29'

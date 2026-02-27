@@ -6,6 +6,13 @@ __pycache__/
 # C extensions
 *.so
 
+# Tool specific
+eedl/
+mcdc_data/
+raw_data/
+.ipynb
+yedek/
+
 # Distribution / packaging
 .Python
 build/
