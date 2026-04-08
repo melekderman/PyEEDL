@@ -44,7 +44,7 @@ def parse_mf26_mt525(raw: str):
         NL = int_endf(cont[55:66])
         i += 1
 
-        # --- read NW mu–p pairs ---
+        # --- read NW mu–p pairs (NW stores 2*NL numeric entries) ---
         pairs = []
         while len(pairs) < NL and i < len(lines):
             ln = lines[i][:66]  # only cols 0–65 contain data
@@ -159,3 +159,175 @@ def small_angle_scattering_cosine(Z, energy_eV, n_mu):
 
     energy_offset = np.arange(0, (N+1)*M, M, dtype="i8")
     return energy_grid, energy_offset, value, PDF
+
+# Helpers to densify angular grid
+def densify_angular_grid(inc_energy, mu_arr, prob_arr, max_gap_ratio=1.1):
+    """
+    Fill large gaps in the angular-distribution energy grid by log-interpolating
+    the PDF tables.  FRENSIE V&V (Kersting et al., NSE 2019) showed log-log
+    grid policies best match experimental results for EEDL data.
+    Any two adjacent energies with E_hi / E_lo > *max_gap_ratio*
+    get extra points inserted at geometric midpoints until the ratio criterion is met.
+
+    Returns new (inc_energy, mu, probability) arrays with the extra tables spliced in.
+    """
+    # Group data by incident energy
+    unique_E = np.unique(inc_energy)
+    tables = {}
+    for E in unique_E:
+        mask = inc_energy == E
+        mu = mu_arr[mask]
+        prob = prob_arr[mask]
+        order = np.argsort(mu)
+        tables[E] = (mu[order], prob[order])
+
+    # Find gaps and insert interpolated tables
+    sorted_E = np.sort(list(tables.keys()))
+    new_tables = dict(tables)  # keep originals
+
+    for i in range(len(sorted_E) - 1):
+        E_lo, E_hi = sorted_E[i], sorted_E[i + 1]
+        ratio = E_hi / E_lo
+        if ratio <= max_gap_ratio:
+            continue
+
+        # How many midpoints needed
+        n_insert = int(np.ceil(np.log(ratio) / np.log(max_gap_ratio))) - 1
+        if n_insert < 1:
+            n_insert = 1
+
+        log_lo, log_hi = np.log(E_lo), np.log(E_hi)
+        insert_energies = np.exp(np.linspace(log_lo, log_hi, n_insert + 2)[1:-1])
+
+        mu_lo, pdf_lo = tables[E_lo]
+        mu_hi, pdf_hi = tables[E_hi]
+
+        # Common mu grid (union of both tables' mu grids)
+        mu_common = np.union1d(mu_lo, mu_hi)
+        pdf_lo_interp = np.interp(mu_common, mu_lo, pdf_lo)
+        pdf_hi_interp = np.interp(mu_common, mu_hi, pdf_hi)
+
+        # Use log-interpolation on PDF (avoids negative values)
+        log_pdf_lo = np.log(np.maximum(pdf_lo_interp, 1e-30))
+        log_pdf_hi = np.log(np.maximum(pdf_hi_interp, 1e-30))
+
+        for E_new in insert_energies:
+            f = (np.log(E_new) - log_lo) / (log_hi - log_lo)
+            log_pdf_new = log_pdf_lo + f * (log_pdf_hi - log_pdf_lo)
+            pdf_new = np.exp(log_pdf_new)
+            # Normalize
+            area = np.trapezoid(pdf_new, mu_common) if hasattr(np, 'trapezoid') else np.trapz(pdf_new, mu_common)
+            if area > 0:
+                pdf_new /= area
+            new_tables[E_new] = (mu_common.copy(), pdf_new)
+
+    # Rebuild flat arrays sorted by energy
+    all_E = np.sort(list(new_tables.keys()))
+    out_inc, out_mu, out_prob = [], [], []
+    for E in all_E:
+        mu, prob = new_tables[E]
+        out_inc.extend([E] * len(mu))
+        out_mu.extend(mu)
+        out_prob.extend(prob)
+
+    return np.array(out_inc), np.array(out_mu), np.array(out_prob)
+
+
+def _build_cdf(mu_orig, pdf_orig):
+    dmu = np.diff(mu_orig)
+    cdf = np.zeros(len(mu_orig), dtype="f8")
+    for i in range(len(dmu)):
+        cdf[i + 1] = cdf[i] + 0.5 * (pdf_orig[i] + pdf_orig[i + 1]) * dmu[i]
+
+    if cdf[-1] > 0:
+        cdf /= cdf[-1]
+    return cdf
+
+
+def _recover_pdf(mu_common, cdf_common):
+    n_mu = len(mu_common)
+    pdf = np.zeros(n_mu, dtype="f8")
+    dmu_common = np.diff(mu_common)
+    for i in range(n_mu - 1):
+        pdf[i] = (cdf_common[i + 1] - cdf_common[i]) / dmu_common[i]
+    if n_mu > 1:
+        pdf[-1] = pdf[-2]
+
+    _trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
+    area = _trapz(pdf, mu_common)
+    if area > 0:
+        pdf /= area
+    return pdf
+
+
+def _unify_mu_grid_on_support(inc_energy, mu_arr, prob_arr, mu_common):
+    unique_E = np.unique(inc_energy)
+    mu_common = np.asarray(mu_common, dtype="f8")
+
+    out_inc = []
+    out_mu = []
+    out_prob = []
+
+    for E in unique_E:
+        mask = inc_energy == E
+        mu_orig = mu_arr[mask]
+        pdf_orig = prob_arr[mask]
+        order = np.argsort(mu_orig)
+        mu_orig = mu_orig[order]
+        pdf_orig = pdf_orig[order]
+
+        cdf_orig = _build_cdf(mu_orig, pdf_orig)
+        cdf_new = np.interp(mu_common, mu_orig, cdf_orig)
+        pdf_new = _recover_pdf(mu_common, cdf_new)
+
+        out_inc.extend([E] * len(mu_common))
+        out_mu.extend(mu_common)
+        out_prob.extend(pdf_new)
+
+    return np.array(out_inc), np.array(out_mu), np.array(out_prob)
+
+
+def unify_mu_grid(inc_energy, mu_arr, prob_arr, n_mu=200):
+    """
+    Re-interpolate all angular distribution tables onto a common mu grid
+    using CDF-based interpolation (preserves distribution shape better than
+    direct PDF interpolation).
+
+    Steps per energy table:
+      1. Build CDF from original (mu, PDF) via trapezoidal integration
+      2. Interpolate CDF onto common mu grid
+      3. Recover PDF as finite-difference derivative of interpolated CDF
+      4. Normalize
+
+    Parameters
+    ----------
+    inc_energy, mu_arr, prob_arr : flat arrays (output of densify_angular_grid)
+    n_mu : int
+        Number of equally-spaced mu points in [-1, 0.999999].
+
+    Returns new (inc_energy, mu, probability) flat arrays with uniform table sizes.
+    """
+    mu_common = np.linspace(-1.0, 0.999999, n_mu, dtype="f8")
+    return _unify_mu_grid_on_support(inc_energy, mu_arr, prob_arr, mu_common)
+
+
+def unify_mu_grid_log1m(inc_energy, mu_arr, prob_arr, n_mu=200, delta=1.0e-10):
+    """
+    Re-interpolate all angular tables onto a common support that is uniform in
+    log((1 - mu) + delta), following the elastic-scattering change of variables
+    used for forward-peaked EEDL interpolation.
+
+    This keeps far more resolution near mu -> 1 than a uniform-mu grid.
+    """
+    mu_min = float(np.min(mu_arr))
+    mu_max = float(np.max(mu_arr))
+
+    x_max = (1.0 - mu_min) + delta
+    x_min = (1.0 - mu_max) + delta
+    x_common = np.geomspace(x_max, x_min, n_mu, dtype="f8")
+
+    mu_common = 1.0 + delta - x_common
+    mu_common[0] = mu_min
+    mu_common[-1] = mu_max
+
+    return _unify_mu_grid_on_support(inc_energy, mu_arr, prob_arr, mu_common)
