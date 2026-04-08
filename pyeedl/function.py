@@ -32,7 +32,7 @@ def parse_mf26_mt525(raw: str):
     Parse MF=26, MT=525 data from line 9 of the ENDF block.
     Returns list of dicts with E_in, E_out, NW, NL, and ang-PDF pairs.
     """
-    lines = raw.splitlines()[8:]  # drop header lines 1–8
+    lines = raw.splitlines()[6:]  # drop header lines 1–6
     groups = []
     i = 0
     while i < len(lines):
