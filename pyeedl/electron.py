@@ -12,8 +12,17 @@ import numpy as np
 import endf
 
 from data import PERIODIC_TABLE, SECTIONS_ABBREVS, SUBSHELL_LABELS
-from function import parse_mf26_mt525, linear_interpolation, build_pdf, small_angle_scattering_cosine
-
+from function import (
+    parse_mf26_mt525,
+    linear_interpolation,
+    build_pdf,
+    build_coupled_scattering_cosine,
+    build_gfp2_elastic_data,
+    small_angle_scattering_cosine,
+    densify_angular_grid,
+    unify_mu_grid,
+    unify_mu_grid_log1m,
+)
 def extract_sections(mat, mf, mt):
     """
     Extracts section (mf,mt) from an endf.Material and returns a pandas DataFrame.
