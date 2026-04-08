@@ -416,6 +416,35 @@ def save_element_h5(mat_path, out_dir):
     print(f"Saved! {h5_path}")
 
 def create_mcdc_file(in_path: str, out_dir: str) -> str:
+    elastic_mu_grid_policy = os.getenv(
+        "PYEEDL_ELASTIC_MU_GRID_POLICY", "native"
+    ).strip().lower()
+    if elastic_mu_grid_policy not in {"native", "uniform_mu", "log1m"}:
+        raise ValueError(
+            "PYEEDL_ELASTIC_MU_GRID_POLICY must be one of: "
+            "'native', 'uniform_mu', 'log1m'"
+        )
+
+    elastic_data_mode = os.getenv(
+        "PYEEDL_ELECTRON_ELASTIC_DATA_MODE", "all"
+    ).strip().lower()
+    if elastic_data_mode not in {"all", "decoupled", "coupled", "gfp2"}:
+        raise ValueError(
+            "PYEEDL_ELECTRON_ELASTIC_DATA_MODE must be one of: "
+            "'all', 'decoupled', 'coupled', 'gfp2'"
+        )
+
+    gfp2_dcs_source = os.getenv(
+        "PYEEDL_ELECTRON_GFP2_DCS_SOURCE", "eedl"
+    ).strip().lower()
+    if gfp2_dcs_source not in {"eedl", "sr"}:
+        raise ValueError(
+            "PYEEDL_ELECTRON_GFP2_DCS_SOURCE must be one of: 'eedl', 'sr'"
+        )
+
+    gfp2_mu_star = float(os.getenv("PYEEDL_ELECTRON_GFP2_MU_STAR", "0.9"))
+    gfp2_beta_max = float(os.getenv("PYEEDL_ELECTRON_GFP2_BETA_MAX", "100.0"))
+
     with h5py.File(in_path, "r") as src:
         Z   = int(src["/metadata/Z"][()])
         AWR = float(src["/metadata/AWR"][()])
@@ -474,11 +503,13 @@ def create_mcdc_file(in_path: str, out_dir: str) -> str:
 
     xs_energy_grid = total_energy
     xs_sc_total    = linear_interpolation(xs_energy_grid, total_scat_xs_energy, total_scat_xs)
-    xs_sc_la       = linear_interpolation(xs_energy_grid, la_scat_xs_energy,    la_scat_xs)
     xs_brem        = linear_interpolation(xs_energy_grid, brem_xs_energy,       brem_xs)
     xs_exc         = linear_interpolation(xs_energy_grid, exc_xs_energy,        exc_xs)
     xs_ion_total   = linear_interpolation(xs_energy_grid, ion_total_xs_energy,  ion_total_xs)
-    xs_sc_sa       = xs_sc_total - xs_sc_la
+
+    # Large-angle (cutoff) vs small-angle XS split
+    xs_sc_la = linear_interpolation(xs_energy_grid, la_scat_xs_energy, la_scat_xs)
+    xs_sc_sa = xs_sc_total - xs_sc_la
 
     xs_total     = np.asarray(total_xs,    "f8")
     xs_sc_total  = np.asarray(xs_sc_total, "f8")
@@ -487,9 +518,6 @@ def create_mcdc_file(in_path: str, out_dir: str) -> str:
     xs_brem      = np.asarray(xs_brem,     "f8")
     xs_exc       = np.asarray(xs_exc,      "f8")
     xs_ion_total = np.asarray(xs_ion_total,"f8")
-
-    mask_sa = xs_sc_sa > 0.0
-    eg_sa, off_sa, val_sa, pdf_sa = small_angle_scattering_cosine(int(Z), np.array(xs_energy_grid)[mask_sa], n_mu=200)
 
     out_dir = os.path.abspath(out_dir)
     os.makedirs(out_dir, exist_ok=True)
@@ -505,46 +533,127 @@ def create_mcdc_file(in_path: str, out_dir: str) -> str:
         h5f.create_group("electron_reactions/total")
         h5f.create_dataset("electron_reactions/total/xs", data=xs_total)
 
-        h5f.create_group("electron_reactions/elastic_scattering")
-        h5f.create_dataset("electron_reactions/elastic_scattering/xs", data=xs_sc_total)
+        # --- Elastic Scattering (MT525) ---
+        # xs      = total elastic scattering cross section (for macro XS)
+        # xs_large = large-angle elastic scattering cross section (DataTable)
+        # scattering_cosine = large-angle angular distribution
+        es = h5f.create_group("electron_reactions/elastic_scattering/MT525")
+        es.attrs["MT"] = 525
+        xs_ds = es.create_dataset("xs", data=xs_sc_total)
+        xs_ds.attrs["offset"] = 0
+        es.create_dataset("reference_frame", data="LAB")
+        es.create_dataset("xs_energy", data=xs_energy_grid)
+        es.create_dataset("xs_large", data=xs_sc_la)
 
-        h5f.create_group("electron_reactions/elastic_scattering/large_angle")
-        h5f.create_dataset("electron_reactions/elastic_scattering/large_angle/xs", data=xs_sc_la)
-        h5f.create_group("electron_reactions/elastic_scattering/large_angle/scattering_cosine")
-        eg, off, val, PDF = build_pdf(la_scat_dist_energy, la_scat_dist_mu, la_scat_dist_prob)
-        h5f.create_dataset("electron_reactions/elastic_scattering/large_angle/scattering_cosine/energy_grid",  data=eg)
-        h5f.create_dataset("electron_reactions/elastic_scattering/large_angle/scattering_cosine/energy_offset", data=off)
-        h5f.create_dataset("electron_reactions/elastic_scattering/large_angle/scattering_cosine/value",        data=val)
-        h5f.create_dataset("electron_reactions/elastic_scattering/large_angle/scattering_cosine/PDF",          data=PDF)
+        # Densify the angular distribution energy grid (fill large gaps)
+        la_scat_dist_energy, la_scat_dist_mu, la_scat_dist_prob = \
+            densify_angular_grid(la_scat_dist_energy, la_scat_dist_mu,
+                                 la_scat_dist_prob, max_gap_ratio=1.1)
+        if elastic_mu_grid_policy == "uniform_mu":
+            la_scat_dist_energy, la_scat_dist_mu, la_scat_dist_prob = \
+                unify_mu_grid(la_scat_dist_energy, la_scat_dist_mu, la_scat_dist_prob)
+        elif elastic_mu_grid_policy == "log1m":
+            la_scat_dist_energy, la_scat_dist_mu, la_scat_dist_prob = \
+                unify_mu_grid_log1m(
+                    la_scat_dist_energy, la_scat_dist_mu, la_scat_dist_prob
+                )
 
-        h5f.create_group("electron_reactions/elastic_scattering/small_angle")
-        h5f.create_dataset("electron_reactions/elastic_scattering/small_angle/xs", data=xs_sc_sa)
-        h5f.create_group("electron_reactions/elastic_scattering/small_angle/scattering_cosine")
-        h5f.create_dataset("electron_reactions/elastic_scattering/small_angle/scattering_cosine/energy_grid",  data=eg_sa)
-        h5f.create_dataset("electron_reactions/elastic_scattering/small_angle/scattering_cosine/energy_offset", data=off_sa)
-        h5f.create_dataset("electron_reactions/elastic_scattering/small_angle/scattering_cosine/value",        data=val_sa)
-        h5f.create_dataset("electron_reactions/elastic_scattering/small_angle/scattering_cosine/PDF",          data=pdf_sa)
+        # Large-angle angular distribution (tabular, [-1, 0.999999])
+        # Small-angle sampled analytically via SR CDF inversion at runtime
+        if elastic_data_mode in {"all", "decoupled"}:
+            eg, off, val, PDF = build_pdf(
+                la_scat_dist_energy, la_scat_dist_mu, la_scat_dist_prob
+            )
+            sc = es.create_group("scattering_cosine")
+            sc.attrs["mu_grid_policy"] = elastic_mu_grid_policy
+            sc.create_dataset("energy_grid",  data=eg)
+            sc.create_dataset("energy_offset", data=off)
+            sc.create_dataset("value",        data=val)
+            sc.create_dataset("PDF",          data=PDF)
 
-        h5f.create_group("electron_reactions/bremsstrahlung")
-        h5f.create_dataset("electron_reactions/bremsstrahlung/xs", data=xs_brem)
-        h5f.create_group("electron_reactions/bremsstrahlung/energy_loss")
-        h5f.create_dataset("electron_reactions/bremsstrahlung/energy_loss/energy", data=brem_avg_loss_energy)
-        h5f.create_dataset("electron_reactions/bremsstrahlung/energy_loss/value",  data=brem_avg_loss)
+        if elastic_data_mode in {"all", "coupled"}:
+            c_energy, c_mu, c_prob = build_coupled_scattering_cosine(
+                la_scat_dist_energy,
+                la_scat_dist_mu,
+                la_scat_dist_prob,
+                Z,
+                mu_cut=0.999999,
+            )
+            eg_c, off_c, val_c, PDF_c = build_pdf(c_energy, c_mu, c_prob)
+            sc_c = es.create_group("scattering_cosine_coupled")
+            sc_c.attrs["mu_grid_policy"] = elastic_mu_grid_policy
+            sc_c.create_dataset("energy_grid", data=eg_c)
+            sc_c.create_dataset("energy_offset", data=off_c)
+            sc_c.create_dataset("value", data=val_c)
+            sc_c.create_dataset("PDF", data=PDF_c)
 
-        h5f.create_group("electron_reactions/excitation")
-        h5f.create_dataset("electron_reactions/excitation/xs", data=xs_exc)
-        h5f.create_group("electron_reactions/excitation/energy_loss")
-        h5f.create_dataset("electron_reactions/excitation/energy_loss/energy", data=exc_avg_loss_energy)
-        h5f.create_dataset("electron_reactions/excitation/energy_loss/value",  data=exc_avg_loss)
+        if elastic_data_mode in {"all", "gfp2"}:
+            gfp2_data = build_gfp2_elastic_data(
+                xs_energy_grid,
+                xs_sc_total,
+                xs_sc_la,
+                la_scat_dist_energy,
+                la_scat_dist_mu,
+                la_scat_dist_prob,
+                Z,
+                mu_star=gfp2_mu_star,
+                beta_max=gfp2_beta_max,
+                dcs_source=gfp2_dcs_source,
+            )
 
-        h5f.create_group("electron_reactions/ionization")
-        h5f.create_dataset("electron_reactions/ionization/xs", data=xs_ion_total)
-        subs = h5f.create_group("electron_reactions/ionization/subshells")
+            g2 = es.create_group("gfp2")
+            g2.create_dataset("mu_star", data=gfp2_data["mu_star"])
+            g2.create_dataset("beta_max", data=gfp2_data["beta_max"])
+            g2.attrs["dcs_source"] = gfp2_data["dcs_source"]
+            g2.attrs["n_angular_anchors"] = gfp2_data["n_angular_anchors"]
+            g2.attrs["mu_grid_policy"] = elastic_mu_grid_policy
+
+            g2.create_dataset("energy_grid", data=gfp2_data["energy_grid"])
+            g2.create_dataset("regime", data=gfp2_data["regime"].astype("S12"))
+            g2.create_dataset("Sigma_s0", data=gfp2_data["Sigma_s0"])
+            g2.create_dataset("Sigma_s1", data=gfp2_data["Sigma_s1"])
+            g2.create_dataset("Sigma_s2", data=gfp2_data["Sigma_s2"])
+            g2.create_dataset("alpha", data=gfp2_data["alpha"])
+            g2.create_dataset("beta", data=gfp2_data["beta"])
+            g2.create_dataset("beta_raw", data=gfp2_data["beta_raw"])
+            g2.create_dataset("Sigma_delta0", data=gfp2_data["Sigma_delta0"])
+            g2.create_dataset("transition_rate", data=gfp2_data["transition_rate"])
+            g2.create_dataset("Sigma_tr", data=gfp2_data["Sigma_tr"])
+            g2.create_dataset("success", data=gfp2_data["success"])
+
+        # --- Bremsstrahlung (MT527) ---
+        br_mt = h5f.create_group("electron_reactions/bremsstrahlung/MT527")
+        br_mt.attrs["MT"] = 527
+        xs_ds = br_mt.create_dataset("xs", data=xs_brem)
+        xs_ds.attrs["offset"] = 0
+        br_mt.create_dataset("reference_frame", data="LAB")
+        el = br_mt.create_group("energy_loss")
+        el.create_dataset("energy", data=brem_avg_loss_energy)
+        el.create_dataset("value",  data=brem_avg_loss)
+
+        # --- Excitation (MT528) ---
+        ex_mt = h5f.create_group("electron_reactions/excitation/MT528")
+        ex_mt.attrs["MT"] = 528
+        xs_ds = ex_mt.create_dataset("xs", data=xs_exc)
+        xs_ds.attrs["offset"] = 0
+        ex_mt.create_dataset("reference_frame", data="LAB")
+        el = ex_mt.create_group("energy_loss")
+        el.create_dataset("energy", data=exc_avg_loss_energy)
+        el.create_dataset("value",  data=exc_avg_loss)
+
+        # --- Ionization (MT522) ---
+        io_mt = h5f.create_group("electron_reactions/ionization/MT522")
+        io_mt.attrs["MT"] = 522
+        xs_ds = io_mt.create_dataset("xs", data=xs_ion_total)
+        xs_ds.attrs["offset"] = 0
+        io_mt.create_dataset("reference_frame", data="LAB")
+        subs = io_mt.create_group("subshells")
         for shell in subshell_names:
             g = subs.create_group(shell)
             xs_e = subshell_xs_data[shell][f"xs_energy_{shell}"]
             xs_v = subshell_xs_data[shell][f"xs_{shell}"]
             xs_on_grid = linear_interpolation(xs_energy_grid, xs_e, xs_v)
+            g.create_dataset("energy_grid", data=xs_energy_grid)
             g.create_dataset("xs", data=xs_on_grid)
             inc = subshell_dist_data[shell][f"dist_inc_energy_{shell}"]
             out = subshell_dist_data[shell][f"dist_out_energy_{shell}"]
@@ -558,3 +667,4 @@ def create_mcdc_file(in_path: str, out_dir: str) -> str:
             g.create_dataset("binding_energy", data=subshell_dist_data[shell][f"binding_energy_{shell}"])
 
         print(f"Saved! {out_path}")
+    return out_path
