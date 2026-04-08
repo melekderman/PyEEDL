@@ -160,6 +160,88 @@ def small_angle_scattering_cosine(Z, energy_eV, n_mu):
     energy_offset = np.arange(0, (N+1)*M, M, dtype="i8")
     return energy_grid, energy_offset, value, PDF
 
+def build_coupled_scattering_cosine(
+    inc_energy,
+    mu_arr,
+    prob_arr,
+    Z,
+    mu_cut=0.999999,
+    n_mu_tail=200,
+    tail_x_floor=1.0e-12,
+):
+    """
+    Build a coupled elastic angular distribution by stitching the tabulated
+    large-angle body to an analytical Screened Rutherford tail and then
+    renormalizing the combined PDF.
+
+    The tabulated part is used for mu <= mu_cut. The tail is scaled to match
+    the tabulated PDF at mu_cut, following the continuity-based stitching used
+    in earlier coupled-elastic experiments.
+    """
+    energy_grid = np.unique(np.asarray(inc_energy, dtype="f8"))
+
+    out_inc = []
+    out_mu = []
+    out_prob = []
+
+    x_cut = max(1.0 - mu_cut, tail_x_floor)
+
+    for E in energy_grid:
+        mask = inc_energy == E
+        mu_body = np.asarray(mu_arr[mask], dtype="f8")
+        pdf_body = np.asarray(prob_arr[mask], dtype="f8")
+
+        order = np.argsort(mu_body)
+        mu_body = mu_body[order]
+        pdf_body = pdf_body[order]
+
+        body_mask = mu_body <= mu_cut
+        mu_body = mu_body[body_mask]
+        pdf_body = pdf_body[body_mask]
+
+        if mu_body.size == 0:
+            mu_body = np.array([-1.0, mu_cut], dtype="f8")
+            pdf_body = np.array([0.5, 0.5], dtype="f8")
+
+        if mu_body[-1] < mu_cut:
+            pdf_cut = np.interp(mu_cut, mu_body, pdf_body)
+            mu_body = np.append(mu_body, mu_cut)
+            pdf_body = np.append(pdf_body, pdf_cut)
+
+        body_area = np.trapezoid(pdf_body, mu_body)
+        if body_area > 0.0:
+            pdf_body = pdf_body / body_area
+
+        x_floor = min(tail_x_floor, 0.1 * x_cut)
+        x_floor = max(x_floor, 1.0e-15)
+        x_tail = np.geomspace(x_cut, x_floor, max(2, int(n_mu_tail)), dtype="f8")
+        mu_tail = 1.0 - x_tail
+
+        eta = float(small_angle_eta(Z, [E])[0])
+        tail_shape = 1.0 / (eta + (1.0 - mu_tail)) ** 2
+
+        cutoff_pdf = float(np.interp(mu_cut, mu_body, pdf_body))
+        cutoff_shape = 1.0 / (eta + (1.0 - mu_cut)) ** 2
+        scale = cutoff_pdf / cutoff_shape if cutoff_shape > 0.0 else 1.0
+        pdf_tail = tail_shape * scale
+
+        mu_combined = np.concatenate((mu_body, mu_tail[1:]))
+        pdf_combined = np.concatenate((pdf_body, pdf_tail[1:]))
+
+        area = np.trapezoid(pdf_combined, mu_combined)
+        if area > 0.0:
+            pdf_combined = pdf_combined / area
+
+        out_inc.extend([E] * len(mu_combined))
+        out_mu.extend(mu_combined)
+        out_prob.extend(pdf_combined)
+
+    return (
+        np.array(out_inc, dtype="f8"),
+        np.array(out_mu, dtype="f8"),
+        np.array(out_prob, dtype="f8"),
+    )
+
 # Helpers to densify angular grid
 def densify_angular_grid(inc_energy, mu_arr, prob_arr, max_gap_ratio=1.1):
     """
@@ -216,7 +298,7 @@ def densify_angular_grid(inc_energy, mu_arr, prob_arr, max_gap_ratio=1.1):
             log_pdf_new = log_pdf_lo + f * (log_pdf_hi - log_pdf_lo)
             pdf_new = np.exp(log_pdf_new)
             # Normalize
-            area = np.trapezoid(pdf_new, mu_common) if hasattr(np, 'trapezoid') else np.trapz(pdf_new, mu_common)
+            area = np.trapezoid(pdf_new, mu_common)
             if area > 0:
                 pdf_new /= area
             new_tables[E_new] = (mu_common.copy(), pdf_new)
@@ -253,8 +335,7 @@ def _recover_pdf(mu_common, cdf_common):
     if n_mu > 1:
         pdf[-1] = pdf[-2]
 
-    _trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
-    area = _trapz(pdf, mu_common)
+    area = np.trapezoid(pdf, mu_common)
     if area > 0:
         pdf /= area
     return pdf
