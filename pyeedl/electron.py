@@ -11,13 +11,16 @@ import pandas as pd
 import numpy as np
 import endf
 
-from data import PERIODIC_TABLE, SECTIONS_ABBREVS, SUBSHELL_LABELS
-from function import (
+from .data import PERIODIC_TABLE, SECTIONS_ABBREVS, SUBSHELL_LABELS
+from .function import (
     parse_mf26_mt525,
     linear_interpolation,
     build_pdf,
     build_coupled_scattering_cosine,
     build_gfp2_elastic_data,
+    build_delta_kernel_fp_data,
+    build_gfp3_elastic_data,
+    compute_optimal_mu_star_gfp2,
     small_angle_scattering_cosine,
     densify_angular_grid,
     unify_mu_grid,
@@ -622,6 +625,7 @@ def create_mcdc_file(in_path: str, out_dir: str) -> str:
             g2.create_dataset("Sigma_s0", data=gfp2_data["Sigma_s0"])
             g2.create_dataset("Sigma_s1", data=gfp2_data["Sigma_s1"])
             g2.create_dataset("Sigma_s2", data=gfp2_data["Sigma_s2"])
+            g2.create_dataset("Sigma_s3", data=gfp2_data["Sigma_s3"])
             g2.create_dataset("alpha", data=gfp2_data["alpha"])
             g2.create_dataset("beta", data=gfp2_data["beta"])
             g2.create_dataset("beta_raw", data=gfp2_data["beta_raw"])
@@ -629,6 +633,74 @@ def create_mcdc_file(in_path: str, out_dir: str) -> str:
             g2.create_dataset("transition_rate", data=gfp2_data["transition_rate"])
             g2.create_dataset("Sigma_tr", data=gfp2_data["Sigma_tr"])
             g2.create_dataset("success", data=gfp2_data["success"])
+            g2.create_dataset("warning", data=gfp2_data["warning"].astype("S256"))
+
+            # Optimal mu_star per energy point (ell=3 eigenvalue matching)
+            N_e = len(gfp2_data["energy_grid"])
+            mu_star_opt = np.empty(N_e, dtype="f8")
+            mu_star_opt_raw = np.empty(N_e, dtype="f8")
+            mu_star_opt_success = np.empty(N_e, dtype=bool)
+            mu_star_opt_warning = np.empty(N_e, dtype="U256")
+            for ie in range(N_e):
+                a_ = gfp2_data["alpha"][ie]
+                b_ = gfp2_data["beta"][ie]
+                sa3 = gfp2_data["Sigma_s0"][ie] - gfp2_data["Sigma_s3"][ie]
+                if np.isfinite(a_) and np.isfinite(b_) and a_ > 0.0 and b_ >= 0.0:
+                    mu_opt = compute_optimal_mu_star_gfp2(a_, b_, sa3)
+                else:
+                    mu_opt = {
+                        "mu_star": np.nan,
+                        "mu_star_raw": np.nan,
+                        "success": False,
+                        "warning": "continuous GFP2 parameters are unavailable",
+                    }
+                mu_star_opt[ie] = mu_opt["mu_star"]
+                mu_star_opt_raw[ie] = mu_opt["mu_star_raw"]
+                mu_star_opt_success[ie] = mu_opt["success"]
+                mu_star_opt_warning[ie] = mu_opt["warning"]
+            g2.create_dataset("mu_star_optimal", data=mu_star_opt)
+            g2.create_dataset("mu_star_optimal_raw", data=mu_star_opt_raw)
+            g2.create_dataset("mu_star_optimal_success", data=mu_star_opt_success)
+            g2.create_dataset(
+                "mu_star_optimal_warning", data=mu_star_opt_warning.astype("S256")
+            )
+
+        # --- Delta-Kernel Fokker-Planck (Prinja Eqs. 17-18) ---
+        fp_data = build_delta_kernel_fp_data(
+            xs_energy_grid, xs_sc_total, xs_sc_la,
+            la_scat_dist_energy, la_scat_dist_mu, la_scat_dist_prob,
+            Z, mu_star_policy="optimal", dcs_source=gfp2_dcs_source,
+        )
+        fp_grp = es.create_group("delta_kernel_fp")
+        fp_grp.create_dataset("energy_grid", data=fp_data["energy_grid"])
+        fp_grp.create_dataset("Sigma_tr", data=fp_data["Sigma_tr"])
+        fp_grp.create_dataset("Sigma_delta0", data=fp_data["Sigma_delta0"])
+        fp_grp.create_dataset("mu_star", data=fp_data["mu_star"])
+        fp_grp.create_dataset("mu_star_raw", data=fp_data["mu_star_raw"])
+        fp_grp.create_dataset("success", data=fp_data["success"])
+        fp_grp.create_dataset("warning", data=fp_data["warning"].astype("S256"))
+
+        # --- GFP3 (3rd-order Generalized Fokker-Planck) ---
+        gfp3_data = build_gfp3_elastic_data(
+            xs_energy_grid, xs_sc_total, xs_sc_la,
+            la_scat_dist_energy, la_scat_dist_mu, la_scat_dist_prob,
+            Z, mu_star=gfp2_mu_star, dcs_source=gfp2_dcs_source,
+        )
+        g3 = es.create_group("gfp3")
+        g3.create_dataset("energy_grid", data=gfp3_data["energy_grid"])
+        g3.create_dataset("alpha", data=gfp3_data["alpha"])
+        g3.create_dataset("beta1", data=gfp3_data["beta1"])
+        g3.create_dataset("beta2", data=gfp3_data["beta2"])
+        g3.create_dataset("Sigma_delta0", data=gfp3_data["Sigma_delta0"])
+        g3.create_dataset("transition_rate_02", data=gfp3_data["transition_rate_02"])
+        g3.create_dataset("transition_rate_21", data=gfp3_data["transition_rate_21"])
+        g3.create_dataset("Sigma_s0", data=gfp3_data["Sigma_s0"])
+        g3.create_dataset("Sigma_s1", data=gfp3_data["Sigma_s1"])
+        g3.create_dataset("Sigma_s2", data=gfp3_data["Sigma_s2"])
+        g3.create_dataset("Sigma_s3", data=gfp3_data["Sigma_s3"])
+        g3.create_dataset("success", data=gfp3_data["success"])
+        g3.create_dataset("warning", data=gfp3_data["warning"].astype("S256"))
+        g3.create_dataset("mu_star", data=gfp3_data["mu_star"])
 
         # --- Bremsstrahlung (MT527) ---
         br_mt = h5f.create_group("electron_reactions/bremsstrahlung/MT527")

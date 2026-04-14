@@ -1,5 +1,5 @@
 import os
-from electron import save_element_h5
+from .electron import save_element_h5
 
 def main():
     base_dir = os.path.dirname(__file__)

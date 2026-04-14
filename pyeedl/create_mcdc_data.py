@@ -1,5 +1,5 @@
 import os, glob
-from electron import create_mcdc_file
+from .electron import create_mcdc_file
 
 def main():
     base_dir = os.path.dirname(__file__)
